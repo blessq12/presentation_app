@@ -1,0 +1,30 @@
+{
+  "name": "present",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node src/server.js",
+    "server:8090": "PORT=8090 node src/server.js",
+    "server:8091": "PORT=8091 node src/server.js",
+    "server:8092": "PORT=8092 node src/server.js",
+    "presentation": "python3 -m http.server 8080",
+    "presentation:8081": "python3 -m http.server 8081",
+    "presentation:8082": "python3 -m http.server 8082",
+    "controller": "open src/controller.html"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "gsap": "^3.13.0",
+    "tailwindcss": "^4.1.11",
+    "vue": "^3.5.17",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "vite": "^7.0.4"
+  }
+}

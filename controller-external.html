@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Контроллер - Внешний доступ</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+
+      .controller {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        padding: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .connection-status {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+
+      .connected {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+
+      .control-group {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+      }
+
+      .control-group h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: #495057;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        background: #007bff;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+        margin-bottom: 8px;
+      }
+
+      button:hover {
+        background: #0056b3;
+      }
+
+      button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+
+      .slide-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .slide-controls button {
+        flex: 1;
+        margin-bottom: 0;
+      }
+
+      .slide-number {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .slide-number input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .log {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 15px;
+        height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+      }
+
+      .log-entry {
+        margin-bottom: 5px;
+        padding: 5px;
+        border-radius: 3px;
+      }
+
+      .log-success {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .log-error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .log-info {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+
+      .external-info {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: #856404;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controller">
+      <div class="header">
+        <h1>🎮 Контроллер - Внешний доступ</h1>
+        <div class="external-info">
+          <strong>🌐 Внешний IP:</strong> 109.197.125.39<br />
+          <strong>📊 Презентация:</strong> http://109.197.125.39:8080/presentation.html
+        </div>
+        <div id="connectionStatus" class="connection-status disconnected">Отключен</div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <h3>📊 Навигация</h3>
+          <div class="slide-controls">
+            <button id="prevBtn" onclick="prevSlide()">⬅️ Назад</button>
+            <button id="nextBtn" onclick="nextSlide()">Вперед ➡️</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3>⚙️ Управление</h3>
+          <button onclick="connect()">🔌 Подключиться</button>
+          <button onclick="disconnect()">🔌 Отключиться</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3>📝 Лог</h3>
+        <div id="log" class="log"></div>
+      </div>
+    </div>
+
+    <script>
+      let ws = null;
+      let isConnected = false;
+
+      function connect() {
+        try {
+          ws = new WebSocket("ws://109.197.125.39:8090");
+
+          ws.onopen = () => {
+            addLog("Подключение к внешнему серверу установлено", "success");
+            // Регистрируемся как контроллер
+            ws.send(
+              JSON.stringify({
+                type: "register_client",
+                clientType: "controller",
+              })
+            );
+          };
+
+          ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            handleMessage(data);
+          };
+
+          ws.onclose = () => {
+            isConnected = false;
+            updateConnectionStatus();
+            addLog("Соединение разорвано", "error");
+          };
+
+          ws.onerror = (error) => {
+            addLog("Ошибка соединения", "error");
+          };
+        } catch (error) {
+          addLog("Ошибка подключения: " + error.message, "error");
+        }
+      }
+
+      function handleMessage(data) {
+        switch (data.type) {
+          case "client_registered":
+            isConnected = true;
+            updateConnectionStatus();
+            addLog("Зарегистрирован как контроллер", "success");
+            break;
+          case "status_update":
+            updateStatus(data);
+            break;
+          default:
+            addLog(`Получено: ${data.type}`, "info");
+        }
+      }
+
+      function updateStatus(data) {
+        const statusElement = document.getElementById("connectionStatus");
+        statusElement.textContent = `Подключен (${data.presentationClients} презентаций, ${data.controllerClients} контроллеров)`;
+      }
+
+      function disconnect() {
+        if (ws) {
+          ws.close();
+          ws = null;
+        }
+      }
+
+      function updateConnectionStatus() {
+        const status = document.getElementById("connectionStatus");
+        if (isConnected) {
+          status.textContent = "Подключен";
+          status.className = "connection-status connected";
+        } else {
+          status.textContent = "Отключен";
+          status.className = "connection-status disconnected";
+        }
+      }
+
+      function sendCommand(type, data = {}) {
+        if (!isConnected) {
+          addLog("Не подключен к серверу", "error");
+          return;
+        }
+
+        const message = { type, ...data };
+        ws.send(JSON.stringify(message));
+        addLog(`Отправлено: ${type}`, "success");
+      }
+
+      function nextSlide() {
+        sendCommand("next_slide");
+      }
+
+      function prevSlide() {
+        sendCommand("prev_slide");
+      }
+
+      function addLog(message, type = "info") {
+        const log = document.getElementById("log");
+        const entry = document.createElement("div");
+        entry.className = `log-entry log-${type}`;
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      window.onload = () => {
+        connect();
+      };
+    </script>
+  </body>
+</html>
